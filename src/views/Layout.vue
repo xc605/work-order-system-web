@@ -7,12 +7,14 @@ import { useAuthStore } from '@/stores/auth'
 import { logout } from '@/api/user'
 import { MENU } from '@/config/menu'
 import AccountDialog from '@/components/AccountDialog.vue'
+import PasswordDialog from '@/components/PasswordDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const collapsed = ref(false)
 const profileVisible = ref(false)
+const passwordVisible = ref(false)
 
 const realName = computed(() => auth.userInfo?.realName || '未登录')
 const avatarText = computed(() => realName.value.slice(0, 1))
@@ -41,6 +43,8 @@ function toggleCollapsed() {
 function onUserCommand(command) {
   if (command === 'profile') {
     profileVisible.value = true
+  } else if (command === 'password') {
+    passwordVisible.value = true
   } else if (command === 'logout') {
     onLogout()
   }
@@ -122,6 +126,7 @@ async function onLogout() {
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="profile">账号详情</el-dropdown-item>
+              <el-dropdown-item command="password">修改密码</el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -130,6 +135,7 @@ async function onLogout() {
       <el-main class="main">
         <router-view />
         <AccountDialog v-model="profileVisible" />
+        <PasswordDialog v-model="passwordVisible" />
       </el-main>
     </el-container>
   </el-container>
