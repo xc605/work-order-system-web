@@ -1,6 +1,6 @@
 # 智能工单系统前端
 
-基于 Vue 3、Vite、Pinia、Vue Router 和 Element Plus 的智能工单系统前端，对接后端项目 [work-order-system-backend](https://github.com/xc605/work-order-system-backend)。
+基于 Vue 3、Vite、Pinia、Vue Router 和 Element Plus 的智能工单系统前端，对接后端项目 [work-order-system-backend](https://github.com/calixforge/work-order-system-backend)。
 
 ## 功能
 
