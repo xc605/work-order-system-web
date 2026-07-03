@@ -31,6 +31,7 @@ const from = computed(() => route.query.from)
 const loading = ref(false)
 const acting = ref(false)
 const detail = ref(null)
+const resolutionExpanded = ref(false)
 const assignVisible = ref(false)
 const assignLoading = ref(false)
 const handlers = ref([])
@@ -135,6 +136,7 @@ async function load() {
   loading.value = true
   try {
     detail.value = await getWorkOrder(woId.value)
+    resolutionExpanded.value = false
   } finally {
     loading.value = false
   }
@@ -284,8 +286,16 @@ function onTransfer() {
 }
 
 function onComplete() {
-  ElMessageBox.confirm('确认该工单已处理完成?', '完成工单', { type: 'success' })
-    .then(() => run(() => completeWorkOrder(woId.value), '已标记完成'))
+  ElMessageBox.prompt('请填写处理结果/解决说明', '完成工单', {
+    inputType: 'textarea',
+    inputValidator: (v) => (v && v.trim() ? true : '处理结果不能为空'),
+  })
+    .then(({ value }) =>
+      run(
+        () => completeWorkOrder(woId.value, { resolutionSummary: value.trim() }),
+        '已标记完成',
+      ),
+    )
     .catch(() => {})
 }
 
@@ -321,6 +331,23 @@ onMounted(load)
         <el-descriptions-item label="创建时间">{{ fmtTime(detail.createTime) }}</el-descriptions-item>
         <el-descriptions-item label="完成时间">{{ fmtTime(detail.completeTime) }}</el-descriptions-item>
         <el-descriptions-item label="描述" :span="2">{{ detail.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="处理结果" :span="2">
+          <div
+            class="resolution-text"
+            :class="{ collapsed: detail.resolutionSummary && !resolutionExpanded }"
+          >
+            {{ detail.resolutionSummary || '-' }}
+          </div>
+          <el-button
+            v-if="detail.resolutionSummary && detail.resolutionSummary.length > 120"
+            link
+            type="primary"
+            class="resolution-toggle"
+            @click="resolutionExpanded = !resolutionExpanded"
+          >
+            {{ resolutionExpanded ? '收起' : '展开' }}
+          </el-button>
+        </el-descriptions-item>
       </el-descriptions>
 
       <div v-if="hasActions" class="actions">
@@ -428,6 +455,20 @@ onMounted(load)
 .log-remark {
   margin-top: 4px;
   color: #6b7280;
+}
+.resolution-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+.resolution-text.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.resolution-toggle {
+  margin-top: 4px;
+  padding-left: 0;
 }
 .handler-meta {
   float: right;

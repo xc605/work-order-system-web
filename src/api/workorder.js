@@ -86,6 +86,6 @@ export function transferWorkOrder(woId, data) {
 }
 
 // 接单人完成工单
-export function completeWorkOrder(woId) {
-  return request.put(`/workorder/${woId}/complete`)
+export function completeWorkOrder(woId, data) {
+  return request.put(`/workorder/${woId}/complete`, data)
 }
