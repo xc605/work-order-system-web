@@ -5,6 +5,7 @@ import {
   Avatar,
   CircleCheck,
   Document,
+  Guide,
   List,
   OfficeBuilding,
   Promotion,
@@ -85,6 +86,11 @@ function go(path) {
   router.push(path)
 }
 
+function openHelpCenter() {
+  const route = router.resolve('/knowledge')
+  window.open(route.href, '_blank', 'noopener,noreferrer')
+}
+
 onMounted(loadStats)
 </script>
 
@@ -113,9 +119,29 @@ onMounted(loadStats)
     </div>
     <el-empty v-else description="暂无待办统计" :image-size="92" />
   </el-card>
+
+  <el-card class="quick-entry">
+    <div class="section-head">
+      <h3>快捷入口</h3>
+      <span>常用资料与辅助工具</span>
+    </div>
+    <div class="entry-grid">
+      <button class="entry-card" type="button" @click="openHelpCenter">
+        <span class="entry-icon"><el-icon><Guide /></el-icon></span>
+        <span class="entry-body">
+          <span class="entry-title">帮助中心</span>
+          <span class="entry-desc">查看 IT 支持、网络排查和 OA 流程说明</span>
+        </span>
+      </button>
+    </div>
+  </el-card>
 </template>
 
 <style scoped>
+.welcome {
+  margin-bottom: 16px;
+}
+
 .welcome-title {
   margin: 0 0 10px;
   font-size: 20px;
@@ -199,5 +225,84 @@ onMounted(loadStats)
 .stat-info {
   --c: #909399;
   --cbg: #f4f4f5;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.section-head h3 {
+  margin: 0;
+  color: #1f2d3d;
+  font-size: 18px;
+}
+
+.section-head span {
+  color: #909399;
+  font-size: 13px;
+}
+
+.entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 320px));
+  gap: 16px;
+}
+
+.entry-card {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #eaeef5;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.entry-card:hover {
+  border-color: #1677ff;
+  box-shadow: 0 10px 24px rgb(31 45 61 / 10%);
+  transform: translateY(-2px);
+}
+
+.entry-icon {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #ecf3ff;
+  color: #1677ff;
+  font-size: 22px;
+}
+
+.entry-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.entry-title {
+  color: #1f2d3d;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.entry-desc {
+  color: #7a8494;
+  font-size: 13px;
+  line-height: 1.45;
 }
 </style>

@@ -10,6 +10,12 @@ const routes = [
     meta: { public: true },
   },
   {
+    path: '/knowledge',
+    name: 'KnowledgeBase',
+    component: () => import('@/views/KnowledgeBase.vue'),
+    meta: { title: '帮助中心' },
+  },
+  {
     path: '/',
     component: () => import('@/views/Layout.vue'),
     redirect: '/home',
