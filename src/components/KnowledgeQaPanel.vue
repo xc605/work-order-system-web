@@ -13,10 +13,14 @@ const answer = ref('')
 const citations = ref([])
 const asked = ref(false)
 
-// 引用预览小框:点角标/标签先看内容,再决定是否新标签打开完整文档
+// 引用预览小框:点灯泡先看内容,多个资料可在弹窗顶部切换
 const previewVisible = ref(false)
-const previewCitation = ref(null)
-const previewSection = ref(null)
+const previewCitations = ref([])
+const previewSections = ref([])
+const previewActiveIndex = ref(0)
+
+const previewCitation = computed(() => previewCitations.value[previewActiveIndex.value] || null)
+const previewSection = computed(() => previewSections.value[previewActiveIndex.value] || null)
 
 // 目录缓存:预览按 sectionId 取条目内容,首次点击拉一次后复用
 let catalogPromise = null
@@ -27,23 +31,42 @@ function ensureCatalog() {
 
 // 模型输出按 Markdown 渲染;LLM 输出视为不可信输入,
 // 先 DOMPurify 消毒再 v-html,防止生成的 HTML/脚本注入页面(XSS)。
-// 消毒后把 [资料n] 原始标注替换成可点击的引用角标(只注入自有固定标记,n 为纯数字,无注入面)
+function uniqueIndexes(indexes) {
+  return [...new Set(indexes)]
+}
+
+const LINK_ICON_HTML =
+  '<svg class="cite-link-icon" viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M715.648 625.152 670.4 579.904l90.496-90.56c75.008-74.944 85.12-186.368 22.656-248.896-62.528-62.464-173.952-52.352-248.96 22.656L444.16 353.6l-45.248-45.248 90.496-90.496c100.032-99.968 251.968-110.08 339.456-22.656 87.488 87.488 77.312 239.424-22.656 339.456l-90.496 90.496zm-90.496 90.496-90.496 90.496C434.624 906.112 282.688 916.224 195.2 828.8c-87.488-87.488-77.312-239.424 22.656-339.456l90.496-90.496 45.248 45.248-90.496 90.56c-75.008 74.944-85.12 186.368-22.656 248.896 62.528 62.464 173.952 52.352 248.96-22.656l90.496-90.496zm0-362.048 45.248 45.248L398.848 670.4 353.6 625.152z"></path></svg>'
+
+function citationDisplaySuffix(indexes) {
+  return indexes.length > 1 ? `<span class="cite-badge-suffix">+${indexes.length}</span>` : ''
+}
+
+// 消毒后把连续 [资料n] 原始标注合并成一个可点击引用标记(只注入自有固定标记,n 为纯数字,无注入面)
 const renderedAnswer = computed(() => {
   if (!answer.value) return ''
   const safe = DOMPurify.sanitize(marked.parse(answer.value, { breaks: true, async: false }))
   return safe.replace(
-    /\[资料(\d+)\]/g,
-    (_, n) => `<sup class="cite-badge" data-cite="${n}" title="查看引用资料">${n}</sup>`,
+    /(?:\[资料\d+\]\s*)+/g,
+    (matched) => {
+      const indexes = uniqueIndexes([...matched.matchAll(/\[资料(\d+)\]/g)].map((m) => m[1]))
+      return `<span class="cite-badge" data-cites="${indexes.join(',')}" title="查看引用资料">${LINK_ICON_HTML}${citationDisplaySuffix(indexes)}</span>`
+    },
   )
 })
 
-// 事件委托:v-html 内容里的角标点击,按编号找到对应引用并跳转
+// 事件委托:v-html 内容里的引用标记点击,按编号找到对应引用并弹窗预览
 function onAnswerClick(e) {
   const badge = e.target.closest('.cite-badge')
   if (!badge) return
-  const index = Number(badge.dataset.cite)
-  const citation = citations.value.find((c) => c.index === index)
-  if (citation) openCitation(citation)
+  const indexes = (badge.dataset.cites || '')
+    .split(',')
+    .map((n) => Number(n))
+    .filter(Boolean)
+  const selected = indexes
+    .map((index) => citations.value.find((c) => c.index === index))
+    .filter(Boolean)
+  if (selected.length) openCitations(selected)
 }
 
 async function onAsk() {
@@ -62,17 +85,19 @@ async function onAsk() {
 }
 
 // 点引用 → 弹预览小框(不打断当前对话);完整文档走新标签页
-async function openCitation(citation) {
-  previewCitation.value = citation
-  previewSection.value = null
+async function openCitations(selectedCitations) {
+  previewCitations.value = selectedCitations
+  previewSections.value = []
+  previewActiveIndex.value = 0
   previewVisible.value = true
-  if (!citation.sectionId) return
   try {
     const catalog = (await ensureCatalog()) || []
-    previewSection.value =
-      catalog.flatMap((c) => c.sections || []).find((s) => s.id === citation.sectionId) || null
+    const sections = catalog.flatMap((c) => c.sections || [])
+    previewSections.value = selectedCitations.map((citation) =>
+      citation.sectionId ? sections.find((s) => s.id === citation.sectionId) || null : null,
+    )
   } catch {
-    previewSection.value = null
+    previewSections.value = selectedCitations.map(() => null)
   }
 }
 
@@ -116,9 +141,9 @@ function openFullDoc() {
             class="citation-tag"
             type="info"
             effect="plain"
-            @click="openCitation(c)"
+            @click="openCitations([c])"
           >
-            [{{ c.index }}] {{ c.title }}
+            {{ c.title }}
           </el-tag>
         </div>
       </template>
@@ -129,10 +154,23 @@ function openFullDoc() {
     <!-- 引用预览:先看条目内容,完整文档新标签打开(不丢当前对话) -->
     <el-dialog
       v-model="previewVisible"
-      :title="previewCitation?.title || '引用资料'"
+      title="引用资料"
       width="min(560px, calc(100vw - 32px))"
       append-to-body
     >
+      <div v-if="previewCitations.length > 1" class="preview-tabs">
+        <button
+          v-for="(c, i) in previewCitations"
+          :key="c.index"
+          type="button"
+          class="preview-tab"
+          :class="{ active: i === previewActiveIndex }"
+          @click="previewActiveIndex = i"
+        >
+          {{ c.title }}
+        </button>
+      </div>
+      <div v-else-if="previewCitation" class="preview-title">{{ previewCitation.title }}</div>
       <div v-if="renderedPreview" class="preview-body" v-html="renderedPreview" />
       <el-empty v-else description="内容加载中或该条目不存在" :image-size="72" />
       <template #footer>
@@ -205,24 +243,72 @@ function openFullDoc() {
 .answer :deep(strong) {
   font-weight: 600;
 }
-/* 行内引用角标:蓝色上标小胶囊,和下方"引用资料"标签同一套编号 */
+/* 行内引用入口:参考阿里云 AI 助手的 link badge,多资料时显示 +N */
 .answer :deep(.cite-badge) {
-  display: inline-block;
-  min-width: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 16px;
   margin: 0 2px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: #ecf3ff;
-  color: #1677ff;
+  padding: 0 5px;
+  border: 1px solid #d5e6ff;
+  border-radius: 9px;
+  background: #f0f7ff;
+  color: #2f6fdd;
   font-size: 11px;
+  font-weight: 600;
   line-height: 16px;
-  text-align: center;
   cursor: pointer;
   user-select: none;
+  vertical-align: text-bottom;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 .answer :deep(.cite-badge:hover) {
-  background: #1677ff;
-  color: #fff;
+  border-color: #9ec5ff;
+  background: #e2f0ff;
+  color: #165dcc;
+}
+.answer :deep(.cite-link-icon) {
+  width: 13px;
+  height: 13px;
+  display: block;
+  flex: none;
+}
+.answer :deep(.cite-badge-suffix) {
+  color: inherit;
+  font-size: 11px;
+  line-height: 16px;
+}
+.preview-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.preview-tab {
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid #d8e1f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #5f6b7a;
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.preview-tab:hover,
+.preview-tab.active {
+  border-color: #1677ff;
+  background: #ecf3ff;
+  color: #1677ff;
+}
+.preview-title {
+  margin-bottom: 12px;
+  color: #303846;
+  font-size: 14px;
+  font-weight: 600;
 }
 .preview-body {
   max-height: 50vh;

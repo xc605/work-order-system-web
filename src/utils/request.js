@@ -8,6 +8,24 @@ const request = axios.create({
   timeout: 15000,
 })
 
+function getNetworkErrorMessage(error) {
+  const status = error.response?.status
+  if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+    const timeout = error.config?.timeout || 0
+    return timeout >= 30000
+      ? '响应时间较长,本次请求已超时,请稍后重试或缩短问题'
+      : '请求超时,请检查网络后重试'
+  }
+  if (!error.response) {
+    return '无法连接服务器,请检查网络或确认后端服务已启动'
+  }
+  if (status === 401) return '登录已失效,请重新登录'
+  if (status === 403) return '没有权限执行该操作'
+  if (status === 404) return '请求的资源不存在'
+  if (status >= 500) return '服务器暂时异常,请稍后重试'
+  return error.response?.data?.message || '请求失败,请稍后重试'
+}
+
 // 请求拦截:有 token 就加 Authorization 头
 request.interceptors.request.use(
   (config) => {
@@ -46,7 +64,7 @@ request.interceptors.response.use(
   },
   (error) => {
     // HTTP 层面错误(网络、超时、5xx 等)
-    ElMessage.error(error.message || '网络异常')
+    ElMessage.error(getNetworkErrorMessage(error))
     return Promise.reject(error)
   },
 )
