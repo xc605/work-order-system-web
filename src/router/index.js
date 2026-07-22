@@ -75,13 +75,13 @@ const routes = [
         meta: { title: '部门管理', roles: ['ADMIN'] },
       },
       {
-        path: 'workorder/:id/edit',
+        path: 'workorder/code/:code/edit',
         name: 'WorkOrderEdit',
         component: () => import('@/views/workorder/WorkOrderCreate.vue'),
         meta: { title: '编辑草稿', roles: ['SUBMITTER'] },
       },
       {
-        path: 'workorder/:id',
+        path: 'workorder/code/:code',
         name: 'WorkOrderDetail',
         component: () => import('@/views/workorder/WorkOrderDetail.vue'),
         meta: { title: '工单详情' },

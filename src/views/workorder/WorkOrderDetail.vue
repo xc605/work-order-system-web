@@ -6,7 +6,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { getHandlers } from '@/api/user'
 import {
-  getWorkOrder,
+  getWorkOrderByCode,
   submitWorkOrder,
   withdrawWorkOrder,
   cancelWorkOrder,
@@ -22,8 +22,8 @@ import { statusTagType, priorityTagType, logTimelineType, PRIORITY_OPTIONS } fro
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-// 用 computed,组件实例被复用(详情→详情、编辑→编辑)时 id 仍随路由更新
-const woId = computed(() => route.params.id)
+// 用 computed，组件实例复用时工单编号仍随路由更新
+const workorderCode = computed(() => route.params.code)
 // 入口上下文:决定显示哪一组动作。多角色账号下,从派单池进来只该看到派单,
 // 从"我创建的"进来才看到取消/撤回等提单人动作,避免跨入口越权显示。
 const from = computed(() => route.query.from)
@@ -135,7 +135,7 @@ const assignRules = {
 async function load() {
   loading.value = true
   try {
-    detail.value = await getWorkOrder(woId.value)
+    detail.value = await getWorkOrderByCode(workorderCode.value)
     resolutionExpanded.value = false
   } finally {
     loading.value = false
@@ -166,18 +166,18 @@ async function run(fn, okMsg, afterPath) {
 }
 
 function onEdit() {
-  router.push(`/workorder/${woId.value}/edit`)
+  router.push({ name: 'WorkOrderEdit', params: { code: workorderCode.value } })
 }
 
 function onSubmitWo() {
   ElMessageBox.confirm('确定提交审核?', '提示', { type: 'warning' })
-    .then(() => run(() => submitWorkOrder(woId.value), '已提交审核'))
+    .then(() => run(() => submitWorkOrder(workorderCode.value), '已提交审核'))
     .catch(() => {})
 }
 
 function onWithdraw() {
   ElMessageBox.confirm('撤回后工单回到草稿,确定?', '提示', { type: 'warning' })
-    .then(() => run(() => withdrawWorkOrder(woId.value), '已撤回'))
+    .then(() => run(() => withdrawWorkOrder(workorderCode.value), '已撤回'))
     .catch(() => {})
 }
 
@@ -186,7 +186,7 @@ function onCancel() {
     inputType: 'textarea',
     inputValidator: (v) => (v && v.trim() ? true : '原因不能为空'),
   })
-    .then(({ value }) => run(() => cancelWorkOrder(woId.value, { remark: value }), '已取消'))
+    .then(({ value }) => run(() => cancelWorkOrder(workorderCode.value, { remark: value }), '已取消'))
     .catch(() => {})
 }
 
@@ -195,7 +195,7 @@ function onDelete() {
     .then(async () => {
       acting.value = true
       try {
-        await deleteDraft(woId.value)
+        await deleteDraft(workorderCode.value)
         ElMessage.success('已删除')
         router.replace('/workorder/created')
       } finally {
@@ -207,7 +207,7 @@ function onDelete() {
 
 function onAccept() {
   ElMessageBox.confirm('确认验收通过?通过后工单关闭。', '验收', { type: 'success' })
-    .then(() => run(() => acceptanceWorkOrder(woId.value, { event: 'ACCEPT' }), '已验收通过'))
+    .then(() => run(() => acceptanceWorkOrder(workorderCode.value, { event: 'ACCEPT' }), '已验收通过'))
     .catch(() => {})
 }
 
@@ -217,14 +217,20 @@ function onRework() {
     inputValidator: (v) => (v && v.trim() ? true : '原因不能为空'),
   })
     .then(({ value }) =>
-      run(() => acceptanceWorkOrder(woId.value, { event: 'REJECT_REWORK', remark: value }), '已退回返工'),
+      run(() => acceptanceWorkOrder(workorderCode.value, { event: 'REJECT_REWORK', remark: value }), '已退回返工'),
     )
     .catch(() => {})
 }
 
 function onReviewPass() {
   ElMessageBox.confirm('确认审核通过?通过后进入待派单。', '审核', { type: 'success' })
-    .then(() => run(() => reviewWorkOrder(woId.value, { event: 'REVIEW_PASS' }), '已通过'))
+    .then(() =>
+      run(
+        () => reviewWorkOrder(workorderCode.value, { event: 'REVIEW_PASS' }),
+        '已通过',
+        '/workorder/review',
+      ),
+    )
     .catch(() => {})
 }
 
@@ -234,7 +240,11 @@ function onReviewReject() {
     inputValidator: (v) => (v && v.trim() ? true : '原因不能为空'),
   })
     .then(({ value }) =>
-      run(() => reviewWorkOrder(woId.value, { event: 'REVIEW_REJECT', remark: value }), '已驳回'),
+      run(
+        () => reviewWorkOrder(workorderCode.value, { event: 'REVIEW_REJECT', remark: value }),
+        '已驳回',
+        '/workorder/review',
+      ),
     )
     .catch(() => {})
 }
@@ -267,7 +277,7 @@ async function onAssignSubmit() {
   if (assignForm.value.priority) payload.priority = assignForm.value.priority
   try {
     // 派单后工单离开派单池,派单员失去查看权 → 跳回派单池
-    await run(() => assignWorkOrder(woId.value, payload), '已派单', '/workorder/dispatch')
+    await run(() => assignWorkOrder(workorderCode.value, payload), '已派单', '/workorder/dispatch')
     assignVisible.value = false
   } catch {
     // request 拦截器已提示错误,弹窗保留方便用户调整后重试
@@ -280,7 +290,7 @@ function onTransfer() {
     inputValidator: (v) => (v && v.trim() ? true : '原因不能为空'),
   })
     .then(({ value }) =>
-      run(() => transferWorkOrder(woId.value, { remark: value }), '已转回待派单', '/workorder/assigned'),
+      run(() => transferWorkOrder(workorderCode.value, { remark: value }), '已转回待派单', '/workorder/assigned'),
     )
     .catch(() => {})
 }
@@ -292,15 +302,16 @@ function onComplete() {
   })
     .then(({ value }) =>
       run(
-        () => completeWorkOrder(woId.value, { resolutionSummary: value.trim() }),
+        () => completeWorkOrder(workorderCode.value, { resolutionSummary: value.trim() }),
         '已标记完成',
+        '/workorder/assigned',
       ),
     )
     .catch(() => {})
 }
 
-// id 变化(同组件实例复用)时重新拉取
-watch(woId, load)
+// 工单编号变化（同组件实例复用）时重新拉取
+watch(workorderCode, load)
 onMounted(load)
 </script>
 
@@ -317,7 +328,7 @@ onMounted(load)
 
     <template v-if="detail">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="工单号">{{ detail.id }}</el-descriptions-item>
+        <el-descriptions-item label="工单号">{{ detail.code }}</el-descriptions-item>
         <el-descriptions-item label="标题">{{ detail.title }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="statusTagType(detail.status)">{{ detail.statusDesc }}</el-tag>
@@ -368,18 +379,26 @@ onMounted(load)
       <el-divider content-position="left">流转日志</el-divider>
       <el-timeline v-if="detail.logs && detail.logs.length">
         <el-timeline-item
-          v-for="log in detail.logs"
+          v-for="(log, index) in detail.logs"
           :key="log.id"
-          :type="logTimelineType(log)"
-          :hollow="false"
+          class="timeline-log"
+          :class="index === detail.logs.length - 1 ? 'is-current' : 'is-history'"
+          :type="index === detail.logs.length - 1 ? logTimelineType(log) : 'info'"
+          :hollow="index !== detail.logs.length - 1"
+          :size="index === detail.logs.length - 1 ? 'large' : 'normal'"
           :timestamp="fmtTime(log.createTime)"
+          placement="top"
         >
-          <span class="log-op">{{ log.operatorName }}</span>
-          <span class="log-event">{{ log.eventDesc }}</span>
-          <span v-if="log.fromStatusDesc" class="log-flow">
-            {{ log.fromStatusDesc }} → {{ log.toStatusDesc }}
-          </span>
-          <div v-if="log.remark" class="log-remark">备注:{{ log.remark }}</div>
+          <div class="log-content">
+            <div class="log-line">
+              <span class="log-op">{{ log.operatorName }}</span>
+              <span class="log-event">{{ log.eventDesc }}</span>
+            </div>
+            <span v-if="log.fromStatusDesc" class="log-flow">
+              {{ log.fromStatusDesc }} → {{ log.toStatusDesc }}
+            </span>
+            <div v-if="log.remark" class="log-remark">备注:{{ log.remark }}</div>
+          </div>
         </el-timeline-item>
       </el-timeline>
       <el-empty v-else description="暂无流转记录" :image-size="80" />
@@ -448,8 +467,34 @@ onMounted(load)
   font-weight: 600;
   margin-right: 8px;
 }
+.log-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.timeline-log.is-history .log-content {
+  opacity: 0.58;
+}
+.timeline-log.is-history :deep(.el-timeline-item__timestamp) {
+  color: #a8abb2;
+}
+.timeline-log.is-current .log-content {
+  color: #303133;
+}
+.timeline-log.is-current .log-event {
+  font-weight: 600;
+}
+.timeline-log.is-current :deep(.el-timeline-item__node) {
+  box-shadow: 0 0 0 4px rgb(64 158 255 / 14%);
+}
+.timeline-log.is-current :deep(.el-timeline-item__timestamp) {
+  color: #606266;
+  font-weight: 500;
+}
 .log-flow {
-  margin-left: 8px;
+  display: inline-block;
+  margin-top: 5px;
   color: #8a94a6;
 }
 .log-remark {

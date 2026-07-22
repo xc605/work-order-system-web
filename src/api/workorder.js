@@ -36,58 +36,58 @@ export function getAllWorkOrders(params) {
 }
 
 // 审核:{ event: 'REVIEW_PASS' | 'REVIEW_REJECT', remark? }(驳回时 remark 必填)
-export function reviewWorkOrder(woId, data) {
-  return request.put(`/workorder/${woId}/review`, data)
+export function reviewWorkOrder(code, data) {
+  return request.put(`/workorder/${code}/review`, data)
 }
 
-// 工单详情(含 description 与流转日志 logs)
-export function getWorkOrder(woId) {
-  return request.get(`/workorder/${woId}`)
+// 按对外工单编号查询详情(含 description 与流转日志 logs)
+export function getWorkOrderByCode(code) {
+  return request.get(`/workorder/code/${code}`)
 }
 
 // 编辑草稿(仅 DRAFT):{ title, description, priority }
-export function updateDraft(woId, data) {
-  return request.put(`/workorder/${woId}`, data)
+export function updateDraft(code, data) {
+  return request.put(`/workorder/${code}`, data)
 }
 
 // 删除草稿(仅 DRAFT)
-export function deleteDraft(woId) {
-  return request.delete(`/workorder/${woId}`)
+export function deleteDraft(code) {
+  return request.delete(`/workorder/${code}`)
 }
 
 // 提交审核(DRAFT → 待审核)
-export function submitWorkOrder(woId) {
-  return request.put(`/workorder/${woId}/submit`)
+export function submitWorkOrder(code) {
+  return request.put(`/workorder/${code}/submit`)
 }
 
 // 撤回(待审核 → 草稿)
-export function withdrawWorkOrder(woId) {
-  return request.put(`/workorder/${woId}/withdraw`)
+export function withdrawWorkOrder(code) {
+  return request.put(`/workorder/${code}/withdraw`)
 }
 
 // 取消:{ remark } 必填
-export function cancelWorkOrder(woId, data) {
-  return request.put(`/workorder/${woId}/cancel`, data)
+export function cancelWorkOrder(code, data) {
+  return request.put(`/workorder/${code}/cancel`, data)
 }
 
 // 验收:{ event: 'ACCEPT' | 'REJECT_REWORK', remark? }(返工时 remark 必填)
-export function acceptanceWorkOrder(woId, data) {
-  return request.put(`/workorder/${woId}/acceptance`, data)
+export function acceptanceWorkOrder(code, data) {
+  return request.put(`/workorder/${code}/acceptance`, data)
 }
 
 // 派单:{ assigneeId, priority? }
-export function assignWorkOrder(woId, data) {
-  return request.put(`/workorder/${woId}/assign`, data)
+export function assignWorkOrder(code, data) {
+  return request.put(`/workorder/${code}/assign`, data)
 }
 
 // 转派:{ remark }
-export function transferWorkOrder(woId, data) {
-  return request.put(`/workorder/${woId}/transfer`, data)
+export function transferWorkOrder(code, data) {
+  return request.put(`/workorder/${code}/transfer`, data)
 }
 
 // 接单人完成工单
-export function completeWorkOrder(woId, data) {
-  return request.put(`/workorder/${woId}/complete`, data)
+export function completeWorkOrder(code, data) {
+  return request.put(`/workorder/${code}/complete`, data)
 }
 
 // 相似历史工单搜索:{ query }(≤100字;返回已验收关闭的工单及当时的解决方案)

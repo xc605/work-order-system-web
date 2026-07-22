@@ -13,6 +13,8 @@ const props = defineProps({
   fetcher: { type: Function, required: true },
   // 是否显示状态筛选(review/dispatch 后端固定状态,无需此筛选)
   statusFilter: { type: Boolean, default: true },
+  // “我创建的”按最近更新排序，不再展示创建时间列。
+  showCreateTime: { type: Boolean, default: true },
   // 入口上下文(created/review/dispatch/assigned/admin):详情页据此决定显示哪组动作
   context: { type: String, default: '' },
 })
@@ -27,6 +29,7 @@ const query = ref({
   keyword: '',
   status: '',
   priority: '',
+  dateRange: [],
 })
 
 async function load() {
@@ -37,6 +40,10 @@ async function load() {
     if (query.value.keyword) params.keyword = query.value.keyword
     if (props.statusFilter && query.value.status) params.status = query.value.status
     if (query.value.priority) params.priority = query.value.priority
+    if (query.value.dateRange?.length === 2) {
+      params.startDate = query.value.dateRange[0]
+      params.endDate = query.value.dateRange[1]
+    }
     const res = await props.fetcher(params)
     list.value = res.list
     total.value = res.total
@@ -51,7 +58,14 @@ function onSearch() {
 }
 
 function onReset() {
-  query.value = { pageNum: 1, pageSize: 10, keyword: '', status: '', priority: '' }
+  query.value = {
+    pageNum: 1,
+    pageSize: 10,
+    keyword: '',
+    status: '',
+    priority: '',
+    dateRange: [],
+  }
   load()
 }
 
@@ -60,8 +74,12 @@ function onPageChange(p) {
   load()
 }
 
-function goDetail(id) {
-  router.push({ path: `/workorder/${id}`, query: props.context ? { from: props.context } : undefined })
+function goDetail(code) {
+  router.push({
+    name: 'WorkOrderDetail',
+    params: { code },
+    query: props.context ? { from: props.context } : undefined,
+  })
 }
 
 // "2026-06-18T10:30:00" → "2026-06-18 10:30:00"
@@ -81,6 +99,18 @@ onMounted(load)
       <el-form-item>
         <el-input v-model="query.keyword" placeholder="标题关键字" clearable @keyup.enter="onSearch" />
       </el-form-item>
+      <el-form-item>
+        <el-date-picker
+          v-model="query.dateRange"
+          type="daterange"
+          value-format="YYYY-MM-DD"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          unlink-panels
+          style="width: 260px"
+        />
+      </el-form-item>
       <el-form-item v-if="statusFilter">
         <el-select v-model="query.status" placeholder="状态" clearable style="width: 120px">
           <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
@@ -98,7 +128,7 @@ onMounted(load)
     </el-form>
 
     <el-table v-loading="loading" :data="list" border stripe>
-      <el-table-column prop="id" label="工单号" width="80" />
+      <el-table-column prop="code" label="工单号" width="190" />
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
@@ -115,12 +145,12 @@ onMounted(load)
         <template #default="{ row }">{{ row.assigneeName || '-' }}</template>
       </el-table-column>
       <el-table-column prop="departmentName" label="部门" width="120" />
-      <el-table-column label="创建时间" width="170">
+      <el-table-column v-if="showCreateTime" label="创建时间" width="170">
         <template #default="{ row }">{{ fmtTime(row.createTime) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="80" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="goDetail(row.id)">详情</el-button>
+          <el-button link type="primary" @click="goDetail(row.code)">详情</el-button>
         </template>
       </el-table-column>
       <template #empty>

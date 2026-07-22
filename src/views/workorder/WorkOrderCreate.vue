@@ -2,14 +2,14 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { createWorkOrder, getWorkOrder, updateDraft } from '@/api/workorder'
+import { createWorkOrder, getWorkOrderByCode, updateDraft } from '@/api/workorder'
 import { PRIORITY_OPTIONS } from '@/constants/workOrder'
 
 const route = useRoute()
 const router = useRouter()
 // 用 computed,组件实例被复用(新建↔编辑、编辑→编辑)时随路由更新
-const woId = computed(() => route.params.id)
-const isEdit = computed(() => !!woId.value)
+const workorderCode = computed(() => route.params.code)
+const isEdit = computed(() => !!workorderCode.value)
 
 const formRef = ref()
 const loading = ref(false)
@@ -30,12 +30,12 @@ async function loadForm() {
     form.value = { title: '', description: '', priority: 2 }
     return
   }
-  const d = await getWorkOrder(woId.value)
+  const d = await getWorkOrderByCode(workorderCode.value)
   form.value = { title: d.title, description: d.description || '', priority: d.priority }
 }
 
-// 进入或 id 变化时(重新)加载;immediate 覆盖首次挂载
-watch(woId, loadForm, { immediate: true })
+// 进入或工单编号变化时重新加载；immediate 覆盖首次挂载
+watch(workorderCode, loadForm, { immediate: true })
 
 // 新建:asSubmit 决定提交审核/存草稿;编辑:保存草稿
 async function onSubmit(asSubmit) {
@@ -45,13 +45,17 @@ async function onSubmit(asSubmit) {
   loading.value = true
   try {
     if (isEdit.value) {
-      await updateDraft(woId.value, {
+      await updateDraft(workorderCode.value, {
         title: form.value.title,
         description: form.value.description,
         priority: form.value.priority,
       })
       ElMessage.success('已保存')
-      router.push({ path: `/workorder/${woId.value}`, query: { from: 'created' } })
+      router.push({
+        name: 'WorkOrderDetail',
+        params: { code: workorderCode.value },
+        query: { from: 'created' },
+      })
     } else {
       await createWorkOrder({ ...form.value, submit: asSubmit })
       ElMessage.success(asSubmit ? '已提交审核' : '已保存草稿')

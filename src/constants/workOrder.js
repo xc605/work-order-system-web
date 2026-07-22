@@ -8,9 +8,9 @@ export const STATUS_OPTIONS = [
   { value: 'DRAFT', label: '草稿' },
   { value: 'PENDING_REVIEW', label: '待审核' },
   { value: 'PENDING_ASSIGN', label: '待派单' },
-  { value: 'ACCEPTED', label: '已接单' },
-  { value: 'COMPLETED', label: '已完成' },
-  { value: 'CLOSED', label: '已关闭' },
+  { value: 'ACCEPTED', label: '处理中' },
+  { value: 'COMPLETED', label: '处理完成，待验收' },
+  { value: 'CLOSED', label: '已验收' },
   { value: 'CANCELED', label: '已取消' },
 ]
 
@@ -20,8 +20,8 @@ const STATUS_TAG = {
   PENDING_REVIEW: 'warning',
   PENDING_ASSIGN: 'warning',
   ACCEPTED: 'primary',
-  COMPLETED: 'success',
-  CLOSED: 'info',
+  COMPLETED: 'warning',
+  CLOSED: 'success',
   CANCELED: 'danger',
 }
 
@@ -63,7 +63,7 @@ const STATUS_TIMELINE_TYPE = {
   PENDING_REVIEW: 'primary',
   PENDING_ASSIGN: 'primary',
   ACCEPTED: 'primary',
-  COMPLETED: 'success',
+  COMPLETED: 'warning',
   CLOSED: 'success',
   CANCELED: 'danger',
 }

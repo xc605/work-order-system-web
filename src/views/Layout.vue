@@ -183,6 +183,39 @@ async function onLogout() {
 .side-menu {
   border-right: 0;
 }
+.side-menu :deep(.el-sub-menu__title) {
+  margin: 2px 8px;
+  border-radius: 6px;
+}
+.side-menu :deep(.el-sub-menu.is-opened > .el-sub-menu__title) {
+  background: rgb(255 255 255 / 7%);
+  color: #fff;
+}
+.side-menu :deep(.el-sub-menu .el-menu) {
+  margin: 0 8px 6px;
+  padding: 4px;
+  background: #071f35;
+  border-left: 2px solid rgb(64 158 255 / 35%);
+  border-radius: 6px;
+}
+.side-menu :deep(.el-sub-menu .el-menu-item) {
+  min-width: 0;
+  height: 42px;
+  margin: 2px 0;
+  padding-left: 38px !important;
+  color: #aebdd0;
+  border-radius: 5px;
+}
+.side-menu :deep(.el-sub-menu .el-menu-item:hover) {
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+}
+.side-menu :deep(.el-sub-menu .el-menu-item.is-active) {
+  background: #1677ff;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 3px 10px rgb(22 119 255 / 24%);
+}
 .header {
   display: flex;
   align-items: center;

@@ -60,7 +60,7 @@ function fmtScore(s) {
 
     <div v-loading="loading" class="results">
       <template v-if="results.length">
-        <div v-for="item in results" :key="item.workorderId" class="item">
+        <div v-for="item in results" :key="item.workorderCode" class="item">
           <div class="item-head">
             <span class="item-title">{{ item.title }}</span>
             <el-tag size="small" type="success">相似度 {{ fmtScore(item.score) }}</el-tag>
